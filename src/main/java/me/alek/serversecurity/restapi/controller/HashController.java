@@ -18,16 +18,11 @@ public class HashController {
 
     @GetMapping
     public PluginDBEntry getPlugin(@RequestParam(value = "name") String name, @RequestParam(value = "version") String version) {
+        System.out.println("eeeh");
         return hashService.getPlugin(name, version);
     }
 
     @GetMapping("/all")
     public List<PluginDBEntry> getAll() { return hashService.getAll(); }
 
-    @PostMapping
-    public boolean saveHashOfPlugin(@RequestParam(value = "name") String name,
-                                    @RequestParam(value = "version") String version,
-                                    @RequestParam(value = "hash") String hash) {
-        return hashService.savePlugin(name, version, hash);
-    }
 }

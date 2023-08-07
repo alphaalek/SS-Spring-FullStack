@@ -1,6 +1,6 @@
 package me.alek.serversecurity.socket;
 
-public interface INestableSocketTransferMethod extends ISocketTransferMethod {
+public interface INestableSocketTransferMethod<T> extends ISocketTransferMethod<T> {
 
-    void putIntoSharedContext(SocketContext context);
+    void putIntoSharedContext(SocketPipelineContext context);
 }

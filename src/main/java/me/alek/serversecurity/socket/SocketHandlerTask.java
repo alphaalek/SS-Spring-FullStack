@@ -1,59 +1,66 @@
 package me.alek.serversecurity.socket;
 
-import me.alek.serversecurity.bot.SingletonBotInitializer;
+import me.alek.serversecurity.bot.DiscordBot;
+import me.alek.serversecurity.restapi.service.HashService;
 
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SocketHandlerTask implements Runnable {
 
-    private static final Map<Integer, SocketContext> sharedContextMap = new HashMap<>();
+    private static final Map<Integer, SocketPipelineContext> sharedContextMap = new ConcurrentHashMap<>();
 
     private final Socket clientSocket;
     private final ServerSocket serverSocket;
+    private final HashService hashService;
+    private SocketPipelineContext context;
 
-    public SocketHandlerTask(ServerSocket serverSocket, Socket clientSocket) {
+    public SocketHandlerTask(ServerSocket serverSocket, Socket clientSocket, HashService hashService) {
         this.serverSocket = serverSocket;
         this.clientSocket = clientSocket;
+        this.hashService = hashService;
     }
 
+    public static void removeId(int id) {
+        synchronized (sharedContextMap) {
+            sharedContextMap.remove(id);
+        }
+    }
 
     @Override
     public void run() {
-        while (!clientSocket.isClosed()) {
+        synchronized (this) {
 
             try {
                 InputStream stream = clientSocket.getInputStream();
 
-                int sharedContextID = stream.read() << 8 + stream.read();
-                SocketContext context = null;
+                int id = stream.read() << 8 + stream.read();
 
                 // has a shared context, look for other transfers
-                if (sharedContextID != 0) {
+                if (id != 0)
+                    context = sharedContextMap.computeIfAbsent(id, (d) -> new SocketPipelineContext(id, serverSocket, hashService));
+                else
+                    context = new SocketPipelineContext(id, serverSocket, hashService);
 
-                    if (sharedContextMap.containsKey(sharedContextID)) {
-                        context = sharedContextMap.get(sharedContextID);
-                        context.setClientSocket(clientSocket);
-                    }
-                }
-                if (context == null) context = new SocketContext(serverSocket, clientSocket);
-                if (sharedContextID != 0 && !sharedContextMap.containsKey(sharedContextID)) sharedContextMap.put(sharedContextID, context);
+                context.addClientToPipeline(clientSocket);
 
-                context.handleInputMethod();
             } catch (Exception ex) {
                 ex.printStackTrace();
 
                 if (ex.getMessage().equals("Connection reset"))
-                    SingletonBotInitializer.log("Client socket did never send anything");
+                    DiscordBot.log("Client socket did never send anything");
                 else
-                    SingletonBotInitializer.log("Socket transfer error: " + ex.getMessage());
+                    DiscordBot.log("Socket transfer error: " + ex.getMessage());
 
-                break;
+                try {
+                    clientSocket.close();
+
+                } catch (Exception ex2) {
+                    DiscordBot.log("Error occurred when closing socket: " + ex2.getMessage());
+                }
             }
         }
     }

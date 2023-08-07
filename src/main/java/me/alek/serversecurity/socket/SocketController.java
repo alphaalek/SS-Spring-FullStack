@@ -1,26 +1,38 @@
 package me.alek.serversecurity.socket;
 
-import me.alek.serversecurity.bot.SingletonBotInitializer;
+import me.alek.serversecurity.bot.DiscordBot;
+import me.alek.serversecurity.restapi.service.HashService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Controller;
 
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+@Controller
 public class SocketController {
 
     private static final int PORT = 12345;
 
-    private static ServerSocket socket;
+    private ServerSocket socket;
     private static CountDownLatch initializingWaitingLatch = null;
 
-    public static synchronized void setup() {
+    private final HashService hashService;
+
+    @Autowired
+    public SocketController(HashService hashService) {
+        this.hashService = hashService;
+
+        setup();
+    }
+
+    public void setup() {
         if (initializingWaitingLatch != null) return;
 
         initializingWaitingLatch = new CountDownLatch(1);
-
         try {
             socket = new ServerSocket(PORT);
 
@@ -29,28 +41,26 @@ public class SocketController {
         }
         initializingWaitingLatch.countDown();
 
-        ExecutorService virtualThreadExecutorService = Executors.newCachedThreadPool();
+        new Thread(() -> {
 
-        while (!socket.isClosed()) {
+            ExecutorService virtualThreadExecutorService = Executors.newCachedThreadPool();
+            while (!socket.isClosed()) {
 
-            try {
-                Socket client = socket.accept();
-                client.setSoTimeout(3000);
+                try {
+                    Socket client = socket.accept();
 
-                SingletonBotInitializer.log("Client connected to socket, " + client.getLocalAddress() + ":" + client.getLocalPort());
+                    SocketHandlerTask clientSocketHandler = new SocketHandlerTask(socket, client, hashService);
+                    virtualThreadExecutorService.execute(clientSocketHandler);
 
-                SocketHandlerTask clientSocketHandler = new SocketHandlerTask(socket, client);
-
-                virtualThreadExecutorService.execute(clientSocketHandler);
-
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                SingletonBotInitializer.log("Error occurred in socket client: " + ex.getMessage());
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    DiscordBot.log("Error occurred in socket client: " + ex.getMessage());
+                }
             }
-        }
+        }).start();
     }
 
-    public static synchronized ServerSocket get() {
+    public synchronized ServerSocket get() {
         if (socket == null) {
 
             if (initializingWaitingLatch == null) setup();

@@ -9,7 +9,7 @@ import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 
-public class SingletonBotInitializer {
+public class DiscordBot {
 
     private final static String TOKEN = "";
 
@@ -44,7 +44,7 @@ public class SingletonBotInitializer {
 
             if (initializingWaitingLatch == null) setup();
             try {
-                if (initializingWaitingLatch != null) initializingWaitingLatch.await();
+                initializingWaitingLatch.await();
 
             } catch (Exception ex) {
                 ex.printStackTrace();

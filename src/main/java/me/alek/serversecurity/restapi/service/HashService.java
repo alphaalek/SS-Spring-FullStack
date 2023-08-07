@@ -9,13 +9,13 @@ public interface HashService {
 
     Optional<String> getHashOfPlugin(String plugin, String version);
 
+    void setHashOfPlugin(String plugin, String version, String hash);
+
     PluginDBEntry getPlugin(String plugin, String version);
 
     List<String> getAllHashes();
 
     List<PluginDBEntry> getAll();
 
-    boolean savePlugin(String plugin, String version, String hash);
-
-    boolean savePlugin(PluginDBEntry entry);
+    void savePlugin(PluginDBEntry entry);
 }

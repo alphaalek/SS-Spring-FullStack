@@ -1,8 +1,8 @@
 package me.alek.serversecurity.socket.methods;
 
-import me.alek.serversecurity.bot.SingletonBotInitializer;
+import me.alek.serversecurity.bot.DiscordBot;
 import me.alek.serversecurity.socket.INestableSocketTransferMethod;
-import me.alek.serversecurity.socket.SocketContext;
+import me.alek.serversecurity.socket.SocketPipelineContext;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -11,36 +11,44 @@ import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SocketMessageTransferMethod implements INestableSocketTransferMethod {
+public class SocketMessageTransferMethod implements INestableSocketTransferMethod<List<String>> {
 
     private final List<String> messages = new ArrayList<>();
 
     @Override
-    public void handle(ServerSocket serverSocket, InputStream stream, SocketContext context) {
+    public List<String> handle(ServerSocket serverSocket, InputStream stream, SocketPipelineContext context) {
         BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
 
+        StringBuilder builder = new StringBuilder();
         try {
-            String msg;
-            while ((msg = reader.readLine()) != null) {
-                messages.add(msg);
+            char character;
+            while ((character = (char) reader.read()) != Character.MIN_VALUE) {
+
+                context.sendKeepAlive();
+
+                if (character == '\n') {
+                    messages.add(builder.toString());
+                    builder = new StringBuilder();
+                    continue;
+                }
+                builder.append(character);
             }
-            SingletonBotInitializer.log("Succesfully transfered " + messages.size() + " messages");
-
         } catch (Exception ex) {
-            ex.printStackTrace();
-            SingletonBotInitializer.log("Error occurred in message transfer: " + ex.getMessage());
-        }
-        try {
-            if (!context.getClientSocket().isClosed()) reader.close();
+            if (!context.hasClosed()) {
+                ex.printStackTrace();
+                DiscordBot.log("Error occurred in message transfer: " + ex.getMessage());
+            }
 
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            SingletonBotInitializer.log("Error occurred when closing stream.");
+            if (!builder.isEmpty()) messages.add(builder.toString());
         }
+
+        DiscordBot.log("Successfully transfered " + messages.size() + " messages");
+
+        return messages;
     }
 
     @Override
-    public void putIntoSharedContext(SocketContext context) {
+    public void putIntoSharedContext(SocketPipelineContext context) {
         for (String message : messages) {
             context.getStorage().putString(message);
         }

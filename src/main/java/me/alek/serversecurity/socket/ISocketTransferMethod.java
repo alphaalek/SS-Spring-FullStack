@@ -3,8 +3,8 @@ package me.alek.serversecurity.socket;
 import java.io.InputStream;
 import java.net.ServerSocket;
 
-public interface ISocketTransferMethod {
+public interface ISocketTransferMethod<T> {
 
-    public void handle(ServerSocket serverSocket, InputStream stream, SocketContext context);
+    public T handle(ServerSocket serverSocket, InputStream stream, SocketPipelineContext context);
 
 }

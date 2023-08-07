@@ -4,9 +4,6 @@ import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @Data
 @Document("plugin")
 public class PluginDBEntry {
@@ -14,7 +11,11 @@ public class PluginDBEntry {
     @Id
     private PluginSignature signature;
     private String hash;
-    private Map<String, Integer> otherHases = new HashMap<>();
+    private int usedEntries;
+    private String lastUsage;
+    private String firstUsage;
+
+    public PluginDBEntry() {}
 
     public PluginDBEntry(String plugin, String version, String hash) {
         this(new PluginSignature(plugin, version), hash);
@@ -28,9 +29,4 @@ public class PluginDBEntry {
         this.signature = signature;
         this.hash = hash;
     }
-
-    public boolean hasHash() {
-        return this.hash != null;
-    }
-
 }

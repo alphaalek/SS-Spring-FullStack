@@ -6,6 +6,7 @@ import me.alek.serversecurity.restapi.repository.HashRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -19,22 +20,34 @@ public class DefaultHashServiceImpl implements HashService {
     public DefaultHashServiceImpl(HashRepository hashRepository) { this.hashRepository = hashRepository; }
 
     public Optional<String> getHashOfPlugin(String plugin, String version) {
-        return Optional.of(getPlugin(plugin, version).getHash());
+        return Optional.ofNullable(getPlugin(plugin, version).getHash());
+    }
+
+    public void setHashOfPlugin(String plugin, String version, String hash) {
+        PluginDBEntry entry = getPlugin(plugin, version);
+        entry.setHash(hash);
+
+        savePlugin(entry);
     }
 
     public PluginDBEntry getPlugin(String plugin, String version) {
+        PluginDBEntry entry = getLiteralPlugin(plugin, version);
 
+        String now = LocalDateTime.now().toString();
+        if (entry.getFirstUsage() == null) entry.setFirstUsage(now);
+        entry.setLastUsage(now);
+
+        entry.setUsedEntries(entry.getUsedEntries() + 1);
+        savePlugin(entry);
+
+        return entry;
+    }
+
+    private PluginDBEntry getLiteralPlugin(String plugin, String version) {
         PluginSignature signature = new PluginSignature(plugin, version);
         Optional<PluginDBEntry> optionalEntry = hashRepository.findBySignature(signature);
 
-        if (optionalEntry.isEmpty()) {
-
-            PluginDBEntry entry = new PluginDBEntry(signature);
-            savePlugin(entry);
-
-            return entry;
-        }
-        return optionalEntry.get();
+        return optionalEntry.orElseGet(() -> new PluginDBEntry(signature));
     }
 
     public List<PluginDBEntry> getAll() {
@@ -45,13 +58,7 @@ public class DefaultHashServiceImpl implements HashService {
         return getAll().stream().map(PluginDBEntry::getHash).collect(Collectors.toList());
     }
 
-    public boolean savePlugin(String plugin, String version, String hash) {
-        return savePlugin(new PluginDBEntry(plugin, version, hash));
-    }
-
-    public boolean savePlugin(PluginDBEntry pluginEntry) {
+    public void savePlugin(PluginDBEntry pluginEntry) {
         hashRepository.save(pluginEntry);
-
-        return true;
     }
 }

@@ -1,6 +1,6 @@
 package me.alek.serversecurity;
 
-import me.alek.serversecurity.bot.SingletonBotInitializer;
+import me.alek.serversecurity.bot.DiscordBot;
 import me.alek.serversecurity.socket.SocketController;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -15,8 +15,7 @@ public class Bootstrap {
 	public static void main(String[] args) {
 		SpringApplication.run(Bootstrap.class, args);
 
-		SingletonBotInitializer.setup();
-		SocketController.setup();
+		DiscordBot.setup();
 	}
 
 }
