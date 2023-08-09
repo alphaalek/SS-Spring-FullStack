@@ -11,7 +11,7 @@ import java.util.concurrent.CountDownLatch;
 
 public class DiscordBot {
 
-    private final static String TOKEN = "MTEzNzAxMDgzMTQ1MjgxOTU0Ng.G5C1a6.nDSnOuzsMWS8KhHYrcIjMYgZFTB0v4K6sSu1nk";
+    private final static String TOKEN = "";
 
     private final static long DEFAULT_GUILD_ID = 1114316101136953535L;
     private final static long DEFAULT_CHANNEL_ID = 1138150877325168660L;
