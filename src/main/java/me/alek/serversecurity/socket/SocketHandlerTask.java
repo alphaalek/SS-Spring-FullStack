@@ -31,36 +31,34 @@ public class SocketHandlerTask implements Runnable {
     }
 
     @Override
-    public void run() {
-        synchronized (this) {
+    public synchronized void run() {
+
+        try {
+            InputStream stream = clientSocket.getInputStream();
+
+            int id = stream.read() << 8 + stream.read();
+
+            // has a shared context, look for other transfers
+            if (id != 0)
+                context = sharedContextMap.computeIfAbsent(id, (d) -> new SocketPipelineContext(id, serverSocket, hashService));
+            else
+                context = new SocketPipelineContext(id, serverSocket, hashService);
+
+            context.addClientToPipeline(clientSocket);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+
+            if (ex.getMessage().equals("Connection reset"))
+                DiscordBot.log("Client socket did never send anything");
+            else
+                DiscordBot.log("Socket transfer error: " + ex.getMessage());
 
             try {
-                InputStream stream = clientSocket.getInputStream();
+                clientSocket.close();
 
-                int id = stream.read() << 8 + stream.read();
-
-                // has a shared context, look for other transfers
-                if (id != 0)
-                    context = sharedContextMap.computeIfAbsent(id, (d) -> new SocketPipelineContext(id, serverSocket, hashService));
-                else
-                    context = new SocketPipelineContext(id, serverSocket, hashService);
-
-                context.addClientToPipeline(clientSocket);
-
-            } catch (Exception ex) {
-                ex.printStackTrace();
-
-                if (ex.getMessage().equals("Connection reset"))
-                    DiscordBot.log("Client socket did never send anything");
-                else
-                    DiscordBot.log("Socket transfer error: " + ex.getMessage());
-
-                try {
-                    clientSocket.close();
-
-                } catch (Exception ex2) {
-                    DiscordBot.log("Error occurred when closing socket: " + ex2.getMessage());
-                }
+            } catch (Exception ex2) {
+                DiscordBot.log("Error occurred when closing socket: " + ex2.getMessage());
             }
         }
     }

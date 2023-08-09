@@ -16,17 +16,21 @@ public class SocketFileTransferMethod implements INestableSocketTransferMethod<F
 
     @Override
     public File handle(ServerSocket serverSocket, InputStream stream, SocketPipelineContext context) {
-        try {
-            String fileName = context.getStorage().poll(String.class);
 
+        String fileName = context.getStorage().poll(String.class);
+        int totalBytes = 0;
+        try {
             file = new File("tmp/" + fileName);
-            if (file.exists()) return file;
+            if (file.exists()) {
+                DiscordBot.log("A file named " + file.getName() + " is already existing.");
+                return file;
+            }
+            if (!file.getParentFile().exists()) file.getParentFile().mkdirs();
 
             DataInputStream dataStream = new DataInputStream(stream);
             FileOutputStream fileOutputStream = new FileOutputStream("tmp/" + fileName);
 
             byte[] buffer = new byte[4096];
-            int totalBytes = 0;
             int bytes;
             while ((bytes = dataStream.read(buffer)) > 0) {
                 fileOutputStream.write(buffer, 0, bytes);
@@ -35,8 +39,6 @@ public class SocketFileTransferMethod implements INestableSocketTransferMethod<F
 
             fileOutputStream.close();
             dataStream.close();
-
-            DiscordBot.log("Successfully transfered file " + fileName + " with " + totalBytes + " total bytes");
         }
         catch (Exception ex) {
 
@@ -45,6 +47,9 @@ public class SocketFileTransferMethod implements INestableSocketTransferMethod<F
                 DiscordBot.log("Error occurred in file transfer: " + ex.getMessage());
             }
         }
+        System.out.println("hey");
+        DiscordBot.log("Successfully transfered file " + fileName + " with " + totalBytes + " total bytes");
+
         return file;
     }
 

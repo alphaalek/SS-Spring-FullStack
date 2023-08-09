@@ -2,15 +2,11 @@ package me.alek.serversecurity.socket.methods;
 
 import me.alek.serversecurity.bot.DiscordBot;
 import me.alek.serversecurity.malware.scanning.VulnerabilityScanner;
-import me.alek.serversecurity.restapi.model.PluginDBEntry;
 import me.alek.serversecurity.restapi.service.HashService;
-import me.alek.serversecurity.socket.ISocketTransferMethod;
 import me.alek.serversecurity.socket.IStereotypedBeanSocketTransferMethod;
 import me.alek.serversecurity.socket.IWaitableSocketTransferMethod;
 import me.alek.serversecurity.socket.SocketPipelineContext;
 import org.apache.tomcat.util.codec.binary.Base64;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.InputStream;
@@ -43,18 +39,22 @@ public class PluginHashGeneratorMethod implements IWaitableSocketTransferMethod<
     public Boolean handle(ServerSocket serverSocket, InputStream stream, SocketPipelineContext context) {
         String name = context.getStorage().poll(String.class);
         String version = context.getStorage().poll(String.class);
-        if (alreadyExistsHash(name, version)) return false;
+        if (alreadyExistsHash(name, version)) {
+            DiscordBot.log("The file hash of plugin " + name + " " + version + " is already stored.");
+            return false;
+        }
 
         File file = context.getStorage().poll(File.class);
-        if (hasFileMalware(file)) return false;
+        if (hasFileMalware(file)) {
+            DiscordBot.log("File has malware, no hash of this file will be stored.");
+            return false;
+        }
 
         if (file == null || !file.exists()) {
-
             DiscordBot.log("Unknown error occurred when generating plugin hash.");
             return false;
         }
         if (name == null || version == null) {
-
             DiscordBot.log("Client failed to send valid details about the plugin signature.");
             return false;
         }
@@ -66,15 +66,16 @@ public class PluginHashGeneratorMethod implements IWaitableSocketTransferMethod<
 
             String checksum = Base64.encodeBase64String(hash);
 
-            DiscordBot.log("Hash of file " + file.getName() + " (" + name + ", " + version + "): " + checksum);
+            DiscordBot.log("Saving hash of plugin " + name + " " + version + " (" + checksum + ")");
 
             hashService.setHashOfPlugin(name, version, checksum);
+
+            return true;
          } catch (Exception ex) {
 
             ex.printStackTrace();
             DiscordBot.log("Error occurred when generating plugin hash: " + ex.getMessage());
             return false;
         }
-        return true;
     }
 }

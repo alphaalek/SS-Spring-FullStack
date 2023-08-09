@@ -166,6 +166,7 @@ public class SocketPipelineContext {
     private <T> CompletableFuture<T> handleInputMethod(Socket clientSocket) {
         try {
             shouldGarbageCollect.set(false);
+            hasClosed.set(false);
             InputStream stream = clientSocket.getInputStream();
 
             SocketTransferFactory factory = SocketTransferFactory.getById(stream.read());

@@ -1,5 +1,6 @@
 package me.alek.serversecurity.restapi.controller;
 
+import me.alek.serversecurity.bot.DiscordBot;
 import me.alek.serversecurity.restapi.model.PluginDBEntry;
 import me.alek.serversecurity.restapi.service.HashService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +19,8 @@ public class HashController {
 
     @GetMapping
     public PluginDBEntry getPlugin(@RequestParam(value = "name") String name, @RequestParam(value = "version") String version) {
-        System.out.println("eeeh");
+        DiscordBot.log("RestController: A client is accessing entry " + name + " " + version + "");
+
         return hashService.getPlugin(name, version);
     }
 
