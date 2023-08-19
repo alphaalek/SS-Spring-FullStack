@@ -1,9 +1,9 @@
-package me.alek.serversecurity.socket;
+package me.alek.serversecurity.fullstack.socket;
 
-import me.alek.serversecurity.restapi.service.HashService;
-import me.alek.serversecurity.socket.methods.PluginHashGeneratorMethod;
-import me.alek.serversecurity.socket.methods.SocketFileTransferMethod;
-import me.alek.serversecurity.socket.methods.SocketMessageTransferMethod;
+import me.alek.serversecurity.fullstack.socket.methods.PluginHashGeneratorMethod;
+import me.alek.serversecurity.fullstack.socket.methods.SocketFileTransferMethod;
+import me.alek.serversecurity.fullstack.socket.methods.SocketMessageTransferMethod;
+import me.alek.serversecurity.fullstack.restapi.service.HashService;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
@@ -13,7 +13,7 @@ public enum SocketTransferFactory {
 
     FILE_TRANSFER(1, SocketFileTransferMethod.class),
     MESSAGE_TRANSFER(2, SocketMessageTransferMethod.class),
-    PLUGIN_HASH_GENERATOR(3,PluginHashGeneratorMethod.class),
+    PLUGIN_HASH_GENERATOR(3, PluginHashGeneratorMethod.class),
     UNKNOWN(-1, null);
 
     private final int id;

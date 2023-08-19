@@ -1,4 +1,4 @@
-package me.alek.serversecurity.bot;
+package me.alek.serversecurity.fullstack.bot;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
@@ -11,7 +11,7 @@ import java.util.concurrent.CountDownLatch;
 
 public class DiscordBot {
 
-    private final static String TOKEN = "";
+    private final static String TOKEN = "MTEzNzAxMDgzMTQ1MjgxOTU0Ng.Gmj9F5.ZvyUQNqwqfqTWr8WyE1nSDs1tFmtBXFnj-AnVE";
 
     private final static long DEFAULT_GUILD_ID = 1114316101136953535L;
     private final static long DEFAULT_CHANNEL_ID = 1138150877325168660L;

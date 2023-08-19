@@ -1,8 +1,8 @@
-package me.alek.serversecurity.restapi.controller;
+package me.alek.serversecurity.fullstack.restapi.controller;
 
-import me.alek.serversecurity.bot.DiscordBot;
-import me.alek.serversecurity.restapi.model.PluginDBEntry;
-import me.alek.serversecurity.restapi.service.HashService;
+import me.alek.serversecurity.fullstack.bot.DiscordBot;
+import me.alek.serversecurity.fullstack.restapi.model.PluginDBEntry;
+import me.alek.serversecurity.fullstack.restapi.service.HashService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 

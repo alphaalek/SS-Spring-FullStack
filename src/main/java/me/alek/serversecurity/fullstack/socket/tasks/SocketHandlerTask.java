@@ -1,7 +1,8 @@
-package me.alek.serversecurity.socket;
+package me.alek.serversecurity.fullstack.socket.tasks;
 
-import me.alek.serversecurity.bot.DiscordBot;
-import me.alek.serversecurity.restapi.service.HashService;
+import me.alek.serversecurity.fullstack.bot.DiscordBot;
+import me.alek.serversecurity.fullstack.restapi.service.HashService;
+import me.alek.serversecurity.fullstack.socket.SocketPipelineContext;
 
 import java.io.InputStream;
 import java.net.ServerSocket;
@@ -50,15 +51,15 @@ public class SocketHandlerTask implements Runnable {
             ex.printStackTrace();
 
             if (ex.getMessage().equals("Connection reset"))
-                DiscordBot.log("Client socket did never send anything");
+                DiscordBot.log(context.getId() + ": Client socket did never send anything");
             else
-                DiscordBot.log("Socket transfer error: " + ex.getMessage());
+                DiscordBot.log(context.getId() + ": Socket transfer error: " + ex.getMessage());
 
             try {
                 clientSocket.close();
 
             } catch (Exception ex2) {
-                DiscordBot.log("Error occurred when closing socket: " + ex2.getMessage());
+                DiscordBot.log(context.getId() + ": Error occurred when closing socket: " + ex2.getMessage());
             }
         }
     }

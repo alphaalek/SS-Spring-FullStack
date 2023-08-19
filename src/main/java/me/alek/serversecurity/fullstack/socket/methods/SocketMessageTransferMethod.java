@@ -1,8 +1,8 @@
-package me.alek.serversecurity.socket.methods;
+package me.alek.serversecurity.fullstack.socket.methods;
 
-import me.alek.serversecurity.bot.DiscordBot;
-import me.alek.serversecurity.socket.INestableSocketTransferMethod;
-import me.alek.serversecurity.socket.SocketPipelineContext;
+import me.alek.serversecurity.fullstack.bot.DiscordBot;
+import me.alek.serversecurity.fullstack.socket.INestableSocketTransferMethod;
+import me.alek.serversecurity.fullstack.socket.SocketPipelineContext;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -36,13 +36,13 @@ public class SocketMessageTransferMethod implements INestableSocketTransferMetho
         } catch (Exception ex) {
             if (!context.hasClosed()) {
                 ex.printStackTrace();
-                DiscordBot.log("Error occurred in message transfer: " + ex.getMessage());
+                DiscordBot.log(context.getId() + ": (Message Method) Error occurred in message transfer: " + ex.getMessage());
             }
 
             if (!builder.isEmpty()) messages.add(builder.toString());
         }
 
-        DiscordBot.log("Successfully transfered " + messages.size() + " messages");
+        DiscordBot.log(context.getId() + ": (Message Method) Successfully transfered " + messages.size() + " messages");
 
         return messages;
     }

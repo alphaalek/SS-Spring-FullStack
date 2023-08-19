@@ -1,9 +1,9 @@
-package me.alek.serversecurity.socket;
+package me.alek.serversecurity.fullstack.socket;
 
-import me.alek.serversecurity.bot.DiscordBot;
-import me.alek.serversecurity.restapi.service.HashService;
+import me.alek.serversecurity.fullstack.bot.DiscordBot;
+import me.alek.serversecurity.fullstack.socket.tasks.SocketHandlerTask;
+import me.alek.serversecurity.fullstack.restapi.service.HashService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Controller;
 
 import java.net.ServerSocket;

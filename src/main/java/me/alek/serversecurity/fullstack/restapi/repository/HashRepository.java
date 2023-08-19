@@ -1,10 +1,9 @@
-package me.alek.serversecurity.restapi.repository;
+package me.alek.serversecurity.fullstack.restapi.repository;
 
-import me.alek.serversecurity.restapi.model.PluginDBEntry;
-import me.alek.serversecurity.restapi.model.PluginSignature;
+import me.alek.serversecurity.fullstack.restapi.model.PluginDBEntry;
+import me.alek.serversecurity.fullstack.restapi.model.PluginSignature;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;

@@ -1,7 +1,6 @@
-package me.alek.serversecurity;
+package me.alek.serversecurity.fullstack;
 
-import me.alek.serversecurity.bot.DiscordBot;
-import me.alek.serversecurity.socket.SocketController;
+import me.alek.serversecurity.fullstack.bot.DiscordBot;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;

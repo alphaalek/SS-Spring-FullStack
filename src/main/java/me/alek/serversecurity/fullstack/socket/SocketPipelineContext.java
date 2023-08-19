@@ -1,7 +1,8 @@
-package me.alek.serversecurity.socket;
+package me.alek.serversecurity.fullstack.socket;
 
-import me.alek.serversecurity.bot.DiscordBot;
-import me.alek.serversecurity.restapi.service.HashService;
+import me.alek.serversecurity.fullstack.socket.tasks.SocketHandlerTask;
+import me.alek.serversecurity.fullstack.bot.DiscordBot;
+import me.alek.serversecurity.fullstack.restapi.service.HashService;
 
 import java.io.InputStream;
 import java.net.ServerSocket;
@@ -33,7 +34,7 @@ public class SocketPipelineContext {
     }
 
     private static final long KEEP_ALIVE_TIMESPAN = 1000L;
-    private static final long GARBAGE_COLLECT_SCHEDULED_CHECK = 15000L;
+    private static final long GARBAGE_COLLECT_SCHEDULED_CHECK = 30000L;
 
     private final int id;
     private final ServerSocket serverSocket;
@@ -129,13 +130,13 @@ public class SocketPipelineContext {
                     if (currentSocket == null) continue;
 
                     try {
-                        DiscordBot.log("Closing socket because no keep alive packet was sent.");
+                        DiscordBot.log(id + ": (KeepAlive) Closing socket because no keep alive packet was sent.");
                         currentSocket.close();
                         hasClosed.set(true);
 
                     } catch (Exception ex) {
                         ex.printStackTrace();
-                        DiscordBot.log("Error occurred when closing socket: " + ex.getMessage());
+                        DiscordBot.log(id + ": (KeepAlive) Error occurred when closing socket: " + ex.getMessage());
                     }
                 }
                 hasSentKeepAlive.compareAndSet(true, false);
@@ -171,7 +172,7 @@ public class SocketPipelineContext {
 
             SocketTransferFactory factory = SocketTransferFactory.getById(stream.read());
             if (factory == SocketTransferFactory.UNKNOWN) {
-                DiscordBot.log("Unknown socket transfer method");
+                DiscordBot.log(id + ": (Input Handle) Unknown socket transfer method");
 
                 clientSocket.close();
                 return CompletableFuture.completedFuture(null);
@@ -190,10 +191,14 @@ public class SocketPipelineContext {
         } catch (Exception ex) {
 
             ex.printStackTrace();
-            DiscordBot.log("Socket transfer error: " + ex.getMessage());
+            DiscordBot.log(id + ": (Input Handle) Socket transfer error: " + ex.getMessage());
 
             return CompletableFuture.completedFuture(null);
         }
+    }
+
+    public int getId() {
+        return id;
     }
 
     public static class SharedStorage {

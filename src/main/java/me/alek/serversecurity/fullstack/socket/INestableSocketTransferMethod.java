@@ -1,4 +1,4 @@
-package me.alek.serversecurity.socket;
+package me.alek.serversecurity.fullstack.socket;
 
 public interface INestableSocketTransferMethod<T> extends ISocketTransferMethod<T> {
 

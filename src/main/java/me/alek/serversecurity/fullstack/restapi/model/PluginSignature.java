@@ -1,4 +1,4 @@
-package me.alek.serversecurity.restapi.model;
+package me.alek.serversecurity.fullstack.restapi.model;
 
 
 public record PluginSignature(String name, String version) {}
