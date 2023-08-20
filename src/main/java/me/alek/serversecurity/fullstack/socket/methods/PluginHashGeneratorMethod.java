@@ -2,6 +2,7 @@ package me.alek.serversecurity.fullstack.socket.methods;
 
 import me.alek.serversecurity.fullstack.bot.DiscordBot;
 import me.alek.serversecurity.fullstack.restapi.service.HashService;
+import me.alek.serversecurity.fullstack.socket.ISocketTransferMethod;
 import me.alek.serversecurity.fullstack.socket.IStereotypedBeanSocketTransferMethod;
 import me.alek.serversecurity.fullstack.socket.IWaitableSocketTransferMethod;
 import me.alek.serversecurity.fullstack.socket.SocketPipelineContext;
@@ -18,7 +19,7 @@ import java.security.MessageDigest;
 import java.util.Map;
 import java.util.Optional;
 
-public class PluginHashGeneratorMethod implements IWaitableSocketTransferMethod<Boolean>, IStereotypedBeanSocketTransferMethod {
+public class PluginHashGeneratorMethod implements ISocketTransferMethod<Boolean>, IStereotypedBeanSocketTransferMethod {
 
     private final HashService hashService;
 
@@ -46,16 +47,17 @@ public class PluginHashGeneratorMethod implements IWaitableSocketTransferMethod<
 
         File file = context.getStorage().poll(File.class);
         if (hasFileMalware(file)) {
-            DiscordBot.log(context.getId() + ": (Hash Method) File has malware, no hash of this file will be stored.");
+            DiscordBot.log("**" + context.getId() + "**: (Hash Method) File has malware, no hash of this file will be stored.");
             return false;
         }
+        context.sendKeepAlive();
 
         if (file == null || !file.exists()) {
-            DiscordBot.log(context.getId() + ": (Hash Method) Unknown error occurred when generating plugin hash.");
+            DiscordBot.log("**" + context.getId() + "**: (Hash Method) Unknown error occurred when generating plugin hash.");
             return false;
         }
         if (name == null || version == null) {
-            DiscordBot.log(context.getId() + ": (Hash Method) Client failed to send valid details about the plugin signature.");
+            DiscordBot.log("**" + context.getId() + "**: (Hash Method) Client failed to send valid details about the plugin signature.");
             return false;
         }
         try {
@@ -67,21 +69,23 @@ public class PluginHashGeneratorMethod implements IWaitableSocketTransferMethod<
             String checksum = Base64.encodeBase64String(hash);
 
             if (hasAlreadyhash(name, version, checksum)) {
-                DiscordBot.log(context.getId() + ": (Hash Method) Hash is already stored for plugin " + name + " " + version + " (" + checksum + ")");
+                DiscordBot.log("**" + context.getId() + "**: (Hash Method) Hash is already stored for plugin " + name + " " + version + " (" + checksum + ")");
 
                 Files.delete(Paths.get(file.getPath()));
                 return false;
             }
 
-            DiscordBot.log(context.getId() + ": (Hash Method) Saving hash of plugin " + name + " " + version + " (" + checksum + ")");
+            DiscordBot.log("**" + context.getId() + "**: (Hash Method) Saving hash of plugin " + name + " " + version + " (" + checksum + ")");
 
             hashService.saveHashOfPlugin(file.getName(), name, version, checksum);
 
             return true;
          } catch (Exception ex) {
 
+            if (context.hasBeenClosedByKeepAlive()) return true;
+
             ex.printStackTrace();
-            DiscordBot.log(context.getId() + ": (Hash Method) Error occurred when generating plugin hash: " + ex.getMessage());
+            DiscordBot.log("**" + context.getId() + "**: (Hash Method) Error occurred when generating plugin hash: " + ex.getMessage());
             return false;
         }
     }

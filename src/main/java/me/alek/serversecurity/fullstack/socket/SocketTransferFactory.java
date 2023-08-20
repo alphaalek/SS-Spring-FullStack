@@ -1,5 +1,6 @@
 package me.alek.serversecurity.fullstack.socket;
 
+import me.alek.serversecurity.fullstack.socket.methods.CloseContextMethod;
 import me.alek.serversecurity.fullstack.socket.methods.PluginHashGeneratorMethod;
 import me.alek.serversecurity.fullstack.socket.methods.SocketFileTransferMethod;
 import me.alek.serversecurity.fullstack.socket.methods.SocketMessageTransferMethod;
@@ -14,6 +15,7 @@ public enum SocketTransferFactory {
     FILE_TRANSFER(1, SocketFileTransferMethod.class),
     MESSAGE_TRANSFER(2, SocketMessageTransferMethod.class),
     PLUGIN_HASH_GENERATOR(3, PluginHashGeneratorMethod.class),
+    CLOSE_CONTEXT(4, CloseContextMethod.class),
     UNKNOWN(-1, null);
 
     private final int id;

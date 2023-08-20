@@ -3,18 +3,22 @@ package me.alek.serversecurity.fullstack.bot;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
 
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class DiscordBot {
 
-    private final static String TOKEN = "MTEzNzAxMDgzMTQ1MjgxOTU0Ng.Gmj9F5.ZvyUQNqwqfqTWr8WyE1nSDs1tFmtBXFnj-AnVE";
+    private final static String TOKEN = "";
 
     private final static long DEFAULT_GUILD_ID = 1114316101136953535L;
-    private final static long DEFAULT_CHANNEL_ID = 1138150877325168660L;
+
+    private final static long PIPELINE_LOGGING_CHANNEL_ID = 1138150877325168660L;
+    private static final long RESTAPI_LOGGING_CHANNEL_ID = 1142742221544759378L;
 
     private static JDA jda;
     private static CountDownLatch initializingWaitingLatch = null;
@@ -57,12 +61,22 @@ public class DiscordBot {
         return initializingWaitingLatch.getCount() == 0;
     }
 
-    public static Optional<TextChannel> getDefaultTextChannel() {
-        return Optional.ofNullable(get().getGuildById(DEFAULT_GUILD_ID)).map(guild -> guild.getTextChannelById(DEFAULT_CHANNEL_ID));
+    public static Optional<TextChannel> getTextChannel(LoggingMethod method) {
+        Optional<Guild> guildOptional = Optional.ofNullable(get().getGuildById(DEFAULT_GUILD_ID));
+
+        AtomicLong id = new AtomicLong();
+        switch (method) {
+            case PIPELINE -> id.set(PIPELINE_LOGGING_CHANNEL_ID);
+            case RESTAPI -> id.set(RESTAPI_LOGGING_CHANNEL_ID);
+        }
+
+        return guildOptional.map(guild -> guild.getTextChannelById(id.get()));
     }
 
-    public static void log(String message) {
-        Optional<TextChannel> optionalTextChannel = getDefaultTextChannel();
+    public static void log(String message) { log(LoggingMethod.PIPELINE, message); }
+
+    public static void log(LoggingMethod method, String message) {
+        Optional<TextChannel> optionalTextChannel = getTextChannel(method);
         if (optionalTextChannel.isEmpty()) return;
 
         optionalTextChannel.get().sendMessage(message).complete();

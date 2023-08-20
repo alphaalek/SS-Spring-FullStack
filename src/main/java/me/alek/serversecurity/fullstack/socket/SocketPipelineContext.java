@@ -33,21 +33,23 @@ public class SocketPipelineContext {
         return holder.sharedStorage;
     }
 
-    private static final long KEEP_ALIVE_TIMESPAN = 1000L;
-    private static final long GARBAGE_COLLECT_SCHEDULED_CHECK = 30000L;
+    private static final long KEEP_ALIVE_TIMESPAN = 1500L;
+    private static final long GARBAGE_COLLECT_SCHEDULED_CHECK = 15000L;
 
     private final int id;
     private final ServerSocket serverSocket;
     private final HashService hashService;
 
     private final LinkedBlockingQueue<Socket> clientSockets = new LinkedBlockingQueue<>();
-    private final ExecutorService executorService = Executors.newCachedThreadPool();
+    private final ExecutorService singleExecutorService = Executors.newSingleThreadExecutor();
+    private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(2);
 
     private final AtomicReference<Socket> currentHandledSocket = new AtomicReference<>();
     private final AtomicReference<ISocketTransferMethod<?>> currentHandledMethod = new AtomicReference<>();
 
-    private final AtomicBoolean hasSentKeepAlive = new AtomicBoolean();
     private final AtomicBoolean hasClosed = new AtomicBoolean();
+    private final AtomicBoolean hasShutDown = new AtomicBoolean();
+    private final AtomicBoolean hasSentKeepAlive = new AtomicBoolean();
     private final AtomicBoolean hasSentConnected = new AtomicBoolean();
     private final AtomicBoolean shouldGarbageCollect = new AtomicBoolean();
 
@@ -56,9 +58,10 @@ public class SocketPipelineContext {
         this.serverSocket = serverSocket;
         this.hashService = hashService;
 
+        System.out.println("creating context");
+        startKeepAliveHandlerTask();
         startScheduledGarbageCollectionTask();
         startHandlingInputWorkerThread();
-        startKeepAliveHandlerTask();
     }
 
     public ServerSocket getServerSocket () {
@@ -67,6 +70,12 @@ public class SocketPipelineContext {
 
     public LinkedBlockingQueue<Socket> getClientSockets() {
         return clientSockets;
+    }
+
+    public boolean hasBeenClosedByKeepAlive() {
+        boolean hasClosed = this.hasClosed.get();
+        this.hasClosed.compareAndSet(true, false);
+        return hasClosed;
     }
 
     public void addClientToPipeline(Socket clientSocket) throws InterruptedException {
@@ -78,27 +87,48 @@ public class SocketPipelineContext {
 
             DiscordBot.log("Client connected to socket: "
                     + clientSocket.getLocalAddress() + ":" + clientSocket.getLocalPort());
-            DiscordBot.log("Initializing socket pipeline with ID " + id);
+            DiscordBot.log("Initializing socket pipeline with ID **" + id + "**");
         }
     }
 
     public void sendKeepAlive() {
-        hasSentKeepAlive.set(true);
+        shouldGarbageCollect.compareAndSet(true, false);
+        hasSentKeepAlive.compareAndSet(false, true);
     }
 
-    public boolean hasClosed() {
-        boolean hasClosed = this.hasClosed.get();
-        this.hasClosed.compareAndSet(true, false);
-        return hasClosed;
+    public void close() {
+        if (hasShutDown.get()) return;
+
+        // close all waiting sockets
+        for (Socket socket : clientSockets) {
+            try {
+                socket.close();
+            } catch (Exception ex) {
+                DiscordBot.log("**" + id + "**: (Shutdown) Error occurred when shutting down the pipeline: " + ex.getMessage());
+
+                ex.printStackTrace();
+            }
+        }
+        // unregister the id of this pipeline context
+        SocketHandlerTask.removeId(id);
+
+        // shutdown the threads running
+        singleExecutorService.shutdownNow();
+        scheduledExecutorService.shutdownNow();
+
+        hasShutDown.set(true);
+        DiscordBot.log("**" + id + "**: (Shutdown) Shutting down the pipeline.");
     }
 
     private void startHandlingInputWorkerThread() {
-        executorService.execute(() -> {
+        singleExecutorService.execute(() -> {
 
             while (true) {
 
+                if (hasShutDown.get()) return;
                 try {
                     Socket clientSocket = clientSockets.take();
+                    System.out.println("handling " + clientSocket);
                     if (clientSocket.isClosed()) continue;
 
                     currentHandledSocket.set(clientSocket);
@@ -113,71 +143,69 @@ public class SocketPipelineContext {
     }
 
     private void startKeepAliveHandlerTask() {
-        executorService.execute(() -> {
 
-            while (true) {
+        final ScheduledFuture<?>[] scheduledTask = new ScheduledFuture<?>[1];
+
+        scheduledTask[0] = scheduledExecutorService.scheduleAtFixedRate(() -> {
+            if (hasShutDown.get()) scheduledTask[0].cancel(true);
+
+            Socket currentHandledSocket = this.currentHandledSocket.get();
+            if (currentHandledSocket == null || currentHandledSocket.isClosed()) {
+
+                this.currentHandledSocket.set(null);
+                return;
+            }
+            System.out.println("checking keep alive + " + currentHandledSocket + " " + currentHandledMethod.get() + " " + hasSentKeepAlive.get());
+
+            if (currentHandledMethod.get() instanceof IWaitableSocketTransferMethod<?>) return;
+
+            if (!hasSentKeepAlive.get()) {
+
                 try {
-                    Thread.sleep(KEEP_ALIVE_TIMESPAN);
+                    DiscordBot.log("**" + id + "**: (KeepAlive) Closing socket because no keep alive packet was sent.");
+                    hasClosed.set(true);
+                    currentHandledSocket.close();
 
                 } catch (Exception ex) {
+                    ex.printStackTrace();
+                    DiscordBot.log("**" + id + "**: (KeepAlive) Error occurred when closing socket: " + ex.getMessage());
                 }
-                if (hasClosed.get()) return;
-                if (currentHandledMethod.get() instanceof IWaitableSocketTransferMethod<?>) continue;
-
-                if (clientSockets.size() > 0 && !hasSentKeepAlive.get()) {
-
-                    Socket currentSocket = currentHandledSocket.get();
-                    if (currentSocket == null) continue;
-
-                    try {
-                        DiscordBot.log(id + ": (KeepAlive) Closing socket because no keep alive packet was sent.");
-                        currentSocket.close();
-                        hasClosed.set(true);
-
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                        DiscordBot.log(id + ": (KeepAlive) Error occurred when closing socket: " + ex.getMessage());
-                    }
-                }
-                hasSentKeepAlive.compareAndSet(true, false);
             }
-        });
+            hasSentKeepAlive.compareAndSet(true, false);
+
+        }, 0, KEEP_ALIVE_TIMESPAN, TimeUnit.MILLISECONDS);
     }
 
     private void startScheduledGarbageCollectionTask() {
-        executorService.execute(() -> {
+        final ScheduledFuture<?>[] scheduledTask = new ScheduledFuture<?>[1];
 
-            while (true) {
-                try {
-                    Thread.sleep(GARBAGE_COLLECT_SCHEDULED_CHECK);
+        scheduledTask[0] = scheduledExecutorService.scheduleAtFixedRate(() -> {
 
-                } catch (Exception ex) {
-                }
+            if (hasShutDown.get()) scheduledTask[0].cancel(true);
 
-                if (shouldGarbageCollect.get()) {
-                    SocketHandlerTask.removeId(this.id);
-                    break;
-                }
-                shouldGarbageCollect.set(true);
+            if (shouldGarbageCollect.get() && clientSockets.isEmpty()) {
+                close();
+                scheduledTask[0].cancel(true);
             }
-            executorService.shutdownNow();
-        });
+            shouldGarbageCollect.set(true);
+
+        }, 0, GARBAGE_COLLECT_SCHEDULED_CHECK, TimeUnit.MILLISECONDS);
     }
 
     private <T> CompletableFuture<T> handleInputMethod(Socket clientSocket) {
         try {
             shouldGarbageCollect.set(false);
-            hasClosed.set(false);
             InputStream stream = clientSocket.getInputStream();
 
             SocketTransferFactory factory = SocketTransferFactory.getById(stream.read());
             if (factory == SocketTransferFactory.UNKNOWN) {
-                DiscordBot.log(id + ": (Input Handle) Unknown socket transfer method");
+                DiscordBot.log("**" + id + "**: (Input Handle) Unknown socket transfer method");
 
                 clientSocket.close();
                 return CompletableFuture.completedFuture(null);
             }
             ISocketTransferMethod<T> method = (ISocketTransferMethod<T>) factory.createMethod(hashService);
+            System.out.println(id + ": " + method);
             currentHandledMethod.set(method);
 
             return CompletableFuture.supplyAsync(() -> {
@@ -191,7 +219,7 @@ public class SocketPipelineContext {
         } catch (Exception ex) {
 
             ex.printStackTrace();
-            DiscordBot.log(id + ": (Input Handle) Socket transfer error: " + ex.getMessage());
+            DiscordBot.log("**" + id + "**: (Input Handle) Socket transfer error: " + ex.getMessage());
 
             return CompletableFuture.completedFuture(null);
         }

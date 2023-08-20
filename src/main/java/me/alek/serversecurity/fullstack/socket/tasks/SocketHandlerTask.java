@@ -37,7 +37,7 @@ public class SocketHandlerTask implements Runnable {
         try {
             InputStream stream = clientSocket.getInputStream();
 
-            int id = stream.read() << 8 + stream.read();
+            int id = Math.abs(stream.read() << 8 + stream.read());
 
             // has a shared context, look for other transfers
             if (id != 0)
@@ -51,15 +51,15 @@ public class SocketHandlerTask implements Runnable {
             ex.printStackTrace();
 
             if (ex.getMessage().equals("Connection reset"))
-                DiscordBot.log(context.getId() + ": Client socket did never send anything");
+                DiscordBot.log("**" + context.getId() + "**: Client socket did never send anything");
             else
-                DiscordBot.log(context.getId() + ": Socket transfer error: " + ex.getMessage());
+                DiscordBot.log("**" + context.getId() + "**: Socket transfer error: " + ex.getMessage());
 
             try {
                 clientSocket.close();
 
             } catch (Exception ex2) {
-                DiscordBot.log(context.getId() + ": Error occurred when closing socket: " + ex2.getMessage());
+                DiscordBot.log("**" + context.getId() + "**: Error occurred when closing socket: " + ex2.getMessage());
             }
         }
     }

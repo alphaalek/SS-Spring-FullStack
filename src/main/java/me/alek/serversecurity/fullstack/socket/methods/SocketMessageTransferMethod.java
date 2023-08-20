@@ -34,15 +34,15 @@ public class SocketMessageTransferMethod implements INestableSocketTransferMetho
                 builder.append(character);
             }
         } catch (Exception ex) {
-            if (!context.hasClosed()) {
-                ex.printStackTrace();
-                DiscordBot.log(context.getId() + ": (Message Method) Error occurred in message transfer: " + ex.getMessage());
-            }
 
+            if (!context.hasBeenClosedByKeepAlive()) {
+                ex.printStackTrace();
+                DiscordBot.log("**" + context.getId() + "**: (Message Method) Error occurred in message transfer: " + ex.getMessage());
+            }
             if (!builder.isEmpty()) messages.add(builder.toString());
         }
 
-        DiscordBot.log(context.getId() + ": (Message Method) Successfully transfered " + messages.size() + " messages");
+        DiscordBot.log("**" + context.getId() + "**: (Message Method) Successfully transfered " + messages.size() + " messages");
 
         return messages;
     }

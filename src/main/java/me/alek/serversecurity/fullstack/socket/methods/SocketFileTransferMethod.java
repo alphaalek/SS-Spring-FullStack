@@ -44,6 +44,7 @@ public class SocketFileTransferMethod implements INestableSocketTransferMethod<F
             int bytes;
             while ((bytes = dataStream.read(buffer)) > 0) {
                 fileOutputStream.write(buffer, 0, bytes);
+                context.sendKeepAlive();
                 totalBytes += bytes;
             }
 
@@ -53,12 +54,12 @@ public class SocketFileTransferMethod implements INestableSocketTransferMethod<F
         }
         catch (Exception ex) {
 
-            if (!context.hasClosed()) {
+            if (!context.hasBeenClosedByKeepAlive()) {
                 ex.printStackTrace();
-                DiscordBot.log(context.getId() + ": (File Method) Error occurred in file transfer: " + ex.getMessage());
+                DiscordBot.log("**" + context.getId() + "**: (File Method) Error occurred in file transfer: " + ex.getMessage());
             }
         }
-        DiscordBot.log(context.getId() + ": (File Method) Successfully transfered file " + fileName + " with " + totalBytes + " total bytes");
+        DiscordBot.log("**" + context.getId() + "**: (File Method) Successfully transfered file " + fileName + " with " + totalBytes + " total bytes");
 
         return file;
     }

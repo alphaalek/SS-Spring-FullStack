@@ -1,6 +1,7 @@
 package me.alek.serversecurity.fullstack.restapi.controller;
 
 import me.alek.serversecurity.fullstack.bot.DiscordBot;
+import me.alek.serversecurity.fullstack.bot.LoggingMethod;
 import me.alek.serversecurity.fullstack.restapi.model.PluginDBEntry;
 import me.alek.serversecurity.fullstack.restapi.service.HashService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +20,7 @@ public class HashController {
 
     @GetMapping
     public PluginDBEntry getPlugin(@RequestParam(value = "name") String name, @RequestParam(value = "version") String version) {
-        DiscordBot.log("RestController: A client is accessing entry " + name + " " + version + "");
+        DiscordBot.log(LoggingMethod.RESTAPI, "RestController: A client is accessing entry " + name + " " + version + "");
 
         return hashService.getPlugin(name, version);
     }
