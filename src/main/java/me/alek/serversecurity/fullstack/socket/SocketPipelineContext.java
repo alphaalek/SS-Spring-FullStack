@@ -33,7 +33,7 @@ public class SocketPipelineContext {
         return holder.sharedStorage;
     }
 
-    private static final long KEEP_ALIVE_TIMESPAN = 1500L;
+    private static final long KEEP_ALIVE_TIMESPAN = 2250L;
     private static final long GARBAGE_COLLECT_SCHEDULED_CHECK = 15000L;
 
     private final int id;
@@ -58,7 +58,6 @@ public class SocketPipelineContext {
         this.serverSocket = serverSocket;
         this.hashService = hashService;
 
-        System.out.println("creating context");
         startKeepAliveHandlerTask();
         startScheduledGarbageCollectionTask();
         startHandlingInputWorkerThread();
@@ -67,6 +66,8 @@ public class SocketPipelineContext {
     public ServerSocket getServerSocket () {
         return serverSocket;
     }
+
+    public Socket getCurrentHandledSocket() { return currentHandledSocket.get(); }
 
     public LinkedBlockingQueue<Socket> getClientSockets() {
         return clientSockets;
@@ -85,9 +86,8 @@ public class SocketPipelineContext {
 
             DiscordBot.get().awaitReady();
 
-            DiscordBot.log("Client connected to socket: "
-                    + clientSocket.getLocalAddress() + ":" + clientSocket.getLocalPort());
-            DiscordBot.log("Initializing socket pipeline with ID **" + id + "**");
+            DiscordBot.log("Client connected to socket: " + clientSocket.getInetAddress() +
+                    ", Initializing socket pipeline with ID **" + id + "**");
         }
     }
 
@@ -128,7 +128,6 @@ public class SocketPipelineContext {
                 if (hasShutDown.get()) return;
                 try {
                     Socket clientSocket = clientSockets.take();
-                    System.out.println("handling " + clientSocket);
                     if (clientSocket.isClosed()) continue;
 
                     currentHandledSocket.set(clientSocket);

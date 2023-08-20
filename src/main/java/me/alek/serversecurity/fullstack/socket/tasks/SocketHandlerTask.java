@@ -37,7 +37,7 @@ public class SocketHandlerTask implements Runnable {
         try {
             InputStream stream = clientSocket.getInputStream();
 
-            int id = Math.abs(stream.read() << 8 + stream.read());
+            int id = stream.read() << 8 + stream.read();
 
             // has a shared context, look for other transfers
             if (id != 0)

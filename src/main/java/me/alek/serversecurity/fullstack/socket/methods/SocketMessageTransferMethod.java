@@ -22,7 +22,7 @@ public class SocketMessageTransferMethod implements INestableSocketTransferMetho
         StringBuilder builder = new StringBuilder();
         try {
             char character;
-            while ((character = (char) reader.read()) != Character.MIN_VALUE) {
+            while ((character = (char) reader.read()) != Character.MIN_VALUE && character != Character.MAX_VALUE) {
 
                 context.sendKeepAlive();
 
@@ -39,8 +39,8 @@ public class SocketMessageTransferMethod implements INestableSocketTransferMetho
                 ex.printStackTrace();
                 DiscordBot.log("**" + context.getId() + "**: (Message Method) Error occurred in message transfer: " + ex.getMessage());
             }
-            if (!builder.isEmpty()) messages.add(builder.toString());
         }
+        if (!builder.isEmpty()) messages.add(builder.toString());
 
         DiscordBot.log("**" + context.getId() + "**: (Message Method) Successfully transfered " + messages.size() + " messages");
 

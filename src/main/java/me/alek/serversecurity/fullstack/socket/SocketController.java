@@ -43,14 +43,14 @@ public class SocketController {
 
         new Thread(() -> {
 
-            ExecutorService virtualThreadExecutorService = Executors.newCachedThreadPool();
+            ExecutorService executorService = Executors.newFixedThreadPool(10);
             while (!socket.isClosed()) {
 
                 try {
                     Socket client = socket.accept();
 
                     SocketHandlerTask clientSocketHandler = new SocketHandlerTask(socket, client, hashService);
-                    virtualThreadExecutorService.execute(clientSocketHandler);
+                    executorService.execute(clientSocketHandler);
 
                 } catch (Exception ex) {
                     ex.printStackTrace();

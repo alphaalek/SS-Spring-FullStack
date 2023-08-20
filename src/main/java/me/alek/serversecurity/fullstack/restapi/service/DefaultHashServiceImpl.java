@@ -9,10 +9,7 @@ import org.springframework.stereotype.Service;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class DefaultHashServiceImpl implements HashService {
@@ -30,18 +27,22 @@ public class DefaultHashServiceImpl implements HashService {
         PluginDBEntry entry = getPlugin(plugin, version);
 
         // pull the already stored hashes for this plugin version if there are any
-        Optional<Map<String, String>> hashes = getHashesOfPlugin(plugin, version);
+        Optional<Map<String, String>> hashes = Optional.ofNullable(entry.getHashes());
 
         Map<String, String> map = hashes.orElseGet(HashMap::new);
         map.put(hash, fileName);
 
         // remove saved hashes of files which no longer exists
-        for (Map.Entry<String, String> fileEntry : map.entrySet()) {
-            if (!Files.exists(Paths.get(fileEntry.getValue()))) {
-                map.remove(fileEntry.getKey());
+        Iterator<Map.Entry<String, String>> fileEntryIterator = map.entrySet().iterator();
+        while (fileEntryIterator.hasNext()) {
+            Map.Entry<String, String> fileEntry = fileEntryIterator.next();
+
+            if (!Files.exists(Paths.get("tmp/" + fileEntry.getValue()))) {
+                // remove that entry from the saved hashes
+                fileEntryIterator.remove();
             }
         }
-        // save the hast
+        // save the hash
         entry.setHashes(map);
         savePlugin(entry);
     }

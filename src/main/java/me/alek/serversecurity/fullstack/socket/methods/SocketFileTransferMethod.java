@@ -9,6 +9,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.ServerSocket;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class SocketFileTransferMethod implements INestableSocketTransferMethod<File> {
 
@@ -21,10 +23,13 @@ public class SocketFileTransferMethod implements INestableSocketTransferMethod<F
         String name = context.getStorage().getString(0);
         String version = context.getStorage().getString(1);
 
+        int size = 0;
+
         if (name == null || version == null) return null;
 
         int totalBytes = 0;
         try {
+            size = stream.read();
             file = new File("tmp/" + name + "-" + version + ".jar");
 
             // make a unique name for this file but still keep it related to the same name and version for other hashes of this plugin version
@@ -57,6 +62,20 @@ public class SocketFileTransferMethod implements INestableSocketTransferMethod<F
             if (!context.hasBeenClosedByKeepAlive()) {
                 ex.printStackTrace();
                 DiscordBot.log("**" + context.getId() + "**: (File Method) Error occurred in file transfer: " + ex.getMessage());
+            }
+        }
+        if (file != null) {
+
+            if (file.length() != size) {
+
+                try {
+                    DiscordBot.log("**" + context.getId() + "**: (File Method) Deleting file " + fileName + " because the size did not match. (" + size + ": " + file.length() + ")");
+                    Files.delete(Paths.get(fileName));
+
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    DiscordBot.log("**" + context.getId() + "**: (File Method) Error occurred when deleting file " + fileName + ": " + ex.getMessage());
+                }
             }
         }
         DiscordBot.log("**" + context.getId() + "**: (File Method) Successfully transfered file " + fileName + " with " + totalBytes + " total bytes");
