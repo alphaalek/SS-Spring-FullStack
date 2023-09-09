@@ -1,5 +1,6 @@
 package me.alek.serversecurity.fullstack.restapi.service;
 
+import me.alek.serversecurity.fullstack.restapi.model.JarWindow;
 import me.alek.serversecurity.fullstack.restapi.model.PluginDBEntry;
 import me.alek.serversecurity.fullstack.restapi.model.PluginSignature;
 import me.alek.serversecurity.fullstack.restapi.repository.HashRepository;
@@ -9,7 +10,8 @@ import org.springframework.stereotype.Service;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class DefaultHashServiceImpl implements HashService {
@@ -19,54 +21,101 @@ public class DefaultHashServiceImpl implements HashService {
     @Autowired
     public DefaultHashServiceImpl(HashRepository hashRepository) { this.hashRepository = hashRepository; }
 
-    public Optional<Map<String, String>> getHashesOfPlugin(String plugin, String version) {
-        return Optional.ofNullable(getPlugin(plugin, version).getHashes());
+    public List<JarWindow> getJarWindowsOfPlugin(String plugin, String version) {
+        return getLiteralPlugin(plugin, version).getJarWindows();
     }
 
-    public void saveHashOfPlugin(String fileName, String plugin, String version, String hash) {
-        PluginDBEntry entry = getPlugin(plugin, version);
+    public List<String> getBlacklistedHashesOfPlugin(String plugin, String version) {
+        return getLiteralPlugin(plugin, version).getBlacklistedHashes();
+    }
 
-        // pull the already stored hashes for this plugin version if there are any
-        Optional<Map<String, String>> hashes = Optional.ofNullable(entry.getHashes());
+    public void addBlacklistedHash(PluginDBEntry entry, String hash) {
+        List<String> blacklistedHashes = entry.getBlacklistedHashes();
+        List<JarWindow> jarWindows = entry.getJarWindows();
 
-        Map<String, String> map = hashes.orElseGet(HashMap::new);
-        map.put(hash, fileName);
+        // check if this hash can be stored in the blacklisted section
+        if (blacklistedHashes.stream().anyMatch(blacklistedHash -> blacklistedHash.equals(hash))) return;
+        if (jarWindows.stream().noneMatch(jarWindow -> jarWindow.getHash().equals(hash))) return;
 
-        // remove saved hashes of files which no longer exists
-        Iterator<Map.Entry<String, String>> fileEntryIterator = map.entrySet().iterator();
-        while (fileEntryIterator.hasNext()) {
-            Map.Entry<String, String> fileEntry = fileEntryIterator.next();
+        blacklistedHashes.add(hash);
 
-            if (!Files.exists(Paths.get("tmp/" + fileEntry.getValue()))) {
-                // remove that entry from the saved hashes
-                fileEntryIterator.remove();
-            }
-        }
-        // save the hash
-        entry.setHashes(map);
+        // set the jar window containing this hash to be blacklisted
+        jarWindows.stream()
+                .filter(jarWindow -> jarWindow.getHash().equals(hash))
+                .forEach(jarWindow -> jarWindow.setBlacklisted(true));
+
         savePlugin(entry);
     }
 
-    public PluginDBEntry getPlugin(String plugin, String version) {
+    public void addBlacklistedHash(String plugin, String version, String hash) {
         PluginDBEntry entry = getLiteralPlugin(plugin, version);
 
-        // set the last usage of this plugin version entry
+        addBlacklistedHash(entry, hash);
+    }
+
+    public void saveJarWindowOfPlugin(String fileName, List<String> resultData, String plugin, String version, String hash, boolean blacklisted) {
+        PluginDBEntry entry = getLiteralPlugin(plugin, version);
+
+        // pull the jar windows for this plugin version if there are any
+        List<JarWindow> jarWindows = entry.getJarWindows();
+
+        // check if the hash or filename of this plugin is already stored
+        if (jarWindows.stream().anyMatch(jarWindow -> jarWindow.getHash().equals(hash) || jarWindow.getFileName().equals(fileName))) return;
+
+        // put the jar window into the list of jar windows for this plugin version
+        JarWindow newJarWindow = new JarWindow(hash, fileName, resultData, blacklisted);
+        jarWindows.add(newJarWindow);
+
+        // remove that entry from the saved hashes
+        jarWindows.removeIf(jarWindow -> !Files.exists(Paths.get("tmp/" + jarWindow.getFileName())));
+
+        if (blacklisted) {
+            addBlacklistedHash(entry, hash);
+        }
+        else savePlugin(entry);
+    }
+
+    private PluginDBEntry updatePlugin(String plugin, String version) {
+        PluginDBEntry entry = getLiteralPlugin(plugin, version);
+
+        // set the last usage and maybe first usage of this plugin version entry
         String now = LocalDateTime.now().toString();
         if (entry.getFirstUsage() == null) entry.setFirstUsage(now);
         entry.setLastUsage(now);
 
-        // set the amount of total times this plugin version entry has been accessed
-        entry.setUsedEntries(entry.getUsedEntries() + 1);
         savePlugin(entry);
 
         return entry;
     }
 
-    private PluginDBEntry getLiteralPlugin(String plugin, String version) {
+    public PluginDBEntry getPluginAndIncrementUsage(String plugin, String version) {
+        PluginDBEntry entry = updatePlugin(plugin, version);
+
+        // set the amount of total times this plugin version entry has been accessed
+        entry.setUsedEntries(entry.getUsedEntries() + 1);
+
+        savePlugin(entry);
+
+        return entry;
+    }
+
+    public PluginDBEntry getLiteralPlugin(String plugin, String version) {
         PluginSignature signature = new PluginSignature(plugin, version);
         Optional<PluginDBEntry> optionalEntry = hashRepository.findBySignature(signature);
 
         return optionalEntry.orElseGet(() -> new PluginDBEntry(signature));
+    }
+
+    public boolean hasRegisteredHash(String name, String version, String hash) {
+        List<JarWindow> jarWindows = getJarWindowsOfPlugin(name, version);
+
+        return jarWindows.stream().anyMatch((jarWindow) -> jarWindow.getHash().equals(hash));
+    }
+
+    public boolean isHashBlacklisted(String name, String version, String hash) {
+        List<String> blacklistedHashes = getBlacklistedHashesOfPlugin(name, version);
+
+        return blacklistedHashes.contains(hash);
     }
 
     public List<PluginDBEntry> getAll() {

@@ -33,7 +33,7 @@ public class SocketPipelineContext {
         return holder.sharedStorage;
     }
 
-    private static final long KEEP_ALIVE_TIMESPAN = 2250L;
+    private static final long KEEP_ALIVE_TIMESPAN = 2000L;
     private static final long GARBAGE_COLLECT_SCHEDULED_CHECK = 15000L;
 
     private final int id;
@@ -79,14 +79,12 @@ public class SocketPipelineContext {
         return hasClosed;
     }
 
-    public void addClientToPipeline(Socket clientSocket) throws InterruptedException {
+    public void addClientToPipeline(Socket clientSocket) {
         clientSockets.add(clientSocket);
 
         if (hasSentConnected.compareAndSet(false, true)) {
 
-            DiscordBot.get().awaitReady();
-
-            DiscordBot.log("Client connected to socket: " + clientSocket.getInetAddress() +
+            DiscordBot.get().log("Client connected to socket: " + clientSocket.getInetAddress() +
                     ", Initializing socket pipeline with ID **" + id + "**");
         }
     }
@@ -96,7 +94,7 @@ public class SocketPipelineContext {
         hasSentKeepAlive.compareAndSet(false, true);
     }
 
-    public void close() {
+    public synchronized void close() {
         if (hasShutDown.get()) return;
 
         // close all waiting sockets
@@ -104,7 +102,7 @@ public class SocketPipelineContext {
             try {
                 socket.close();
             } catch (Exception ex) {
-                DiscordBot.log("**" + id + "**: (Shutdown) Error occurred when shutting down the pipeline: " + ex.getMessage());
+                DiscordBot.get().log("**" + id + "**: (Shutdown) Error occurred when shutting down the pipeline: " + ex.getMessage());
 
                 ex.printStackTrace();
             }
@@ -117,7 +115,7 @@ public class SocketPipelineContext {
         scheduledExecutorService.shutdownNow();
 
         hasShutDown.set(true);
-        DiscordBot.log("**" + id + "**: (Shutdown) Shutting down the pipeline.");
+        DiscordBot.get().log("**" + id + "**: (Shutdown) Shutting down the pipeline.");
     }
 
     private void startHandlingInputWorkerThread() {
@@ -142,11 +140,17 @@ public class SocketPipelineContext {
     }
 
     private void startKeepAliveHandlerTask() {
-
-        final ScheduledFuture<?>[] scheduledTask = new ScheduledFuture<?>[1];
-
-        scheduledTask[0] = scheduledExecutorService.scheduleAtFixedRate(() -> {
-            if (hasShutDown.get()) scheduledTask[0].cancel(true);
+        final CompletableFuture<ScheduledFuture<?>> scheduledFuture = new CompletableFuture<>();
+        final Runnable closeHeartbeat = () -> {
+            if (!scheduledFuture.isDone()) return;
+            try {
+                scheduledFuture.get().cancel(true);
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        };
+        final ScheduledFuture<?> scheduledTask = scheduledExecutorService.scheduleAtFixedRate(() -> {
+            if (hasShutDown.get()) closeHeartbeat.run();
 
             Socket currentHandledSocket = this.currentHandledSocket.get();
             if (currentHandledSocket == null || currentHandledSocket.isClosed()) {
@@ -161,18 +165,20 @@ public class SocketPipelineContext {
             if (!hasSentKeepAlive.get()) {
 
                 try {
-                    DiscordBot.log("**" + id + "**: (KeepAlive) Closing socket because no keep alive packet was sent.");
+                    DiscordBot.get().log("**" + id + "**: (Keep Alive) Closing socket because no keep alive packet was sent.");
                     hasClosed.set(true);
                     currentHandledSocket.close();
 
                 } catch (Exception ex) {
                     ex.printStackTrace();
-                    DiscordBot.log("**" + id + "**: (KeepAlive) Error occurred when closing socket: " + ex.getMessage());
+                    DiscordBot.get().log("**" + id + "**: (Keep Alive) Error occurred when closing socket: " + ex.getMessage());
                 }
             }
             hasSentKeepAlive.compareAndSet(true, false);
 
         }, 0, KEEP_ALIVE_TIMESPAN, TimeUnit.MILLISECONDS);
+
+        scheduledFuture.complete(scheduledTask);
     }
 
     private void startScheduledGarbageCollectionTask() {
@@ -198,7 +204,7 @@ public class SocketPipelineContext {
 
             SocketTransferFactory factory = SocketTransferFactory.getById(stream.read());
             if (factory == SocketTransferFactory.UNKNOWN) {
-                DiscordBot.log("**" + id + "**: (Input Handle) Unknown socket transfer method");
+                DiscordBot.get().log("**" + id + "**: (Input Handle) Unknown socket transfer method");
 
                 clientSocket.close();
                 return CompletableFuture.completedFuture(null);
@@ -218,7 +224,7 @@ public class SocketPipelineContext {
         } catch (Exception ex) {
 
             ex.printStackTrace();
-            DiscordBot.log("**" + id + "**: (Input Handle) Socket transfer error: " + ex.getMessage());
+            DiscordBot.get().log("**" + id + "**: (Input Handle) Socket transfer error: " + ex.getMessage());
 
             return CompletableFuture.completedFuture(null);
         }

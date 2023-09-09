@@ -29,7 +29,7 @@ public class SocketController {
         setup();
     }
 
-    public void setup() {
+    public synchronized void setup() {
         if (initializingWaitingLatch != null) return;
 
         initializingWaitingLatch = new CountDownLatch(1);
@@ -42,8 +42,7 @@ public class SocketController {
         initializingWaitingLatch.countDown();
 
         new Thread(() -> {
-
-            ExecutorService executorService = Executors.newFixedThreadPool(10);
+            ExecutorService executorService = Executors.newCachedThreadPool();
             while (!socket.isClosed()) {
 
                 try {
@@ -54,7 +53,7 @@ public class SocketController {
 
                 } catch (Exception ex) {
                     ex.printStackTrace();
-                    DiscordBot.log("Error occurred in socket client: " + ex.getMessage());
+                    DiscordBot.get().log("Error occurred in socket client: " + ex.getMessage());
                 }
             }
         }).start();

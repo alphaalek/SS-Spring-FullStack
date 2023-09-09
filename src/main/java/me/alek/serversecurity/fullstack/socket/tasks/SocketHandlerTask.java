@@ -4,6 +4,7 @@ import me.alek.serversecurity.fullstack.bot.DiscordBot;
 import me.alek.serversecurity.fullstack.restapi.service.HashService;
 import me.alek.serversecurity.fullstack.socket.SocketPipelineContext;
 
+import java.io.DataInputStream;
 import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -36,11 +37,13 @@ public class SocketHandlerTask implements Runnable {
 
         try {
             InputStream stream = clientSocket.getInputStream();
+            DataInputStream dataStream = new DataInputStream(stream);
 
-            int id = stream.read() << 8 + stream.read();
+            int id = (int) dataStream.readLong();
 
-            // has a shared context, look for other transfers
+            // check for shared context
             if (id != 0)
+                // has a shared context, look for other transfers
                 context = sharedContextMap.computeIfAbsent(id, (d) -> new SocketPipelineContext(id, serverSocket, hashService));
             else
                 context = new SocketPipelineContext(id, serverSocket, hashService);
@@ -51,15 +54,15 @@ public class SocketHandlerTask implements Runnable {
             ex.printStackTrace();
 
             if (ex.getMessage().equals("Connection reset"))
-                DiscordBot.log("**" + context.getId() + "**: Client socket did never send anything");
+                DiscordBot.get().log("**" + context.getId() + "**: Client socket did never send anything");
             else
-                DiscordBot.log("**" + context.getId() + "**: Socket transfer error: " + ex.getMessage());
+                DiscordBot.get().log("**" + context.getId() + "**: Socket transfer error: " + ex.getMessage());
 
             try {
                 clientSocket.close();
 
             } catch (Exception ex2) {
-                DiscordBot.log("**" + context.getId() + "**: Error occurred when closing socket: " + ex2.getMessage());
+                DiscordBot.get().log("**" + context.getId() + "**: Error occurred when closing socket: " + ex2.getMessage());
             }
         }
     }

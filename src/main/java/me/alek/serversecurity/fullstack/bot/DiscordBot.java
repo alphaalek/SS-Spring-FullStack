@@ -1,17 +1,22 @@
 package me.alek.serversecurity.fullstack.bot;
 
+import me.alek.serversecurity.fullstack.bot.commands.CommandManager;
+import me.alek.serversecurity.fullstack.restapi.service.HashService;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 
+@Component
 public class DiscordBot {
 
     private final static String TOKEN = "";
@@ -21,11 +26,22 @@ public class DiscordBot {
     private final static long PIPELINE_LOGGING_CHANNEL_ID = 1138150877325168660L;
     private static final long RESTAPI_LOGGING_CHANNEL_ID = 1142742221544759378L;
 
-    private static JDA jda;
-    private static CountDownLatch initializingWaitingLatch = null;
-    private static final Semaphore loggingSemaphore = new Semaphore(1);
+    private static DiscordBot INSTANCE;
 
-    public static synchronized void setup() {
+    private JDA jda;
+    private CountDownLatch initializingWaitingLatch = null;
+    private final Semaphore loggingSemaphore = new Semaphore(1);
+    private final HashService hashService;
+
+    @Autowired
+    public DiscordBot(HashService hashService) {
+        INSTANCE = this;
+        this.hashService = hashService;
+
+        setup();
+    }
+
+    private void setup() {
         if (initializingWaitingLatch != null) return;
 
         initializingWaitingLatch = new CountDownLatch(1);
@@ -43,12 +59,13 @@ public class DiscordBot {
             ex.printStackTrace();
         }
         initializingWaitingLatch.countDown();
+
+        getGuild().ifPresent((guild) -> jda.addEventListener(new CommandManager(guild, hashService)));
     }
 
-    public static synchronized JDA get() {
+    public JDA getJDA() {
         if (jda == null) {
 
-            if (initializingWaitingLatch == null) setup();
             try {
                 initializingWaitingLatch.await();
 
@@ -59,12 +76,20 @@ public class DiscordBot {
         return jda;
     }
 
-    public static boolean isInitialized() {
+    public static synchronized DiscordBot get() {
+        return INSTANCE;
+    }
+
+    public boolean isInitialized() {
         return initializingWaitingLatch.getCount() == 0;
     }
 
-    public static Optional<TextChannel> getTextChannel(LoggingMethod method) {
-        Optional<Guild> guildOptional = Optional.ofNullable(get().getGuildById(DEFAULT_GUILD_ID));
+    public Optional<Guild> getGuild() {
+        return Optional.ofNullable(getJDA().getGuildById(DEFAULT_GUILD_ID));
+    }
+
+    public Optional<TextChannel> getTextChannel(LoggingMethod method) {
+        Optional<Guild> guildOptional = getGuild();
 
         AtomicLong id = new AtomicLong();
         switch (method) {
@@ -75,9 +100,9 @@ public class DiscordBot {
         return guildOptional.map(guild -> guild.getTextChannelById(id.get()));
     }
 
-    public static void log(String message) { log(LoggingMethod.PIPELINE, message); }
+    public void log(String message) { log(LoggingMethod.PIPELINE, message); }
 
-    public static void log(LoggingMethod method, String message) {
+    public void log(LoggingMethod method, String message) {
         try {
             // try acquiring the semaphore, and maybe wait till the bot is ready to log the message
             //loggingSemaphore.acquire();

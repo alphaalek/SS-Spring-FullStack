@@ -19,17 +19,16 @@ public class SocketFileTransferMethod implements INestableSocketTransferMethod<F
 
     @Override
     public File handle(ServerSocket serverSocket, InputStream stream, SocketPipelineContext context) {
-
         String name = context.getStorage().getString(0);
         String version = context.getStorage().getString(1);
 
-        int size = 0;
-
         if (name == null || version == null) return null;
 
+        long size = 0;
         int totalBytes = 0;
         try {
-            size = stream.read();
+            DataInputStream dataStream = new DataInputStream(stream);
+            size = dataStream.readLong();
             file = new File("tmp/" + name + "-" + version + ".jar");
 
             // make a unique name for this file but still keep it related to the same name and version for other hashes of this plugin version
@@ -42,7 +41,6 @@ public class SocketFileTransferMethod implements INestableSocketTransferMethod<F
             if (!file.getParentFile().exists()) file.getParentFile().mkdirs();
 
             // store the file transfered over the socket
-            DataInputStream dataStream = new DataInputStream(stream);
             FileOutputStream fileOutputStream = new FileOutputStream(file);
 
             byte[] buffer = new byte[4096];
@@ -52,33 +50,29 @@ public class SocketFileTransferMethod implements INestableSocketTransferMethod<F
                 context.sendKeepAlive();
                 totalBytes += bytes;
             }
-
             // close the streams to finish the transfer
             fileOutputStream.close();
             dataStream.close();
         }
         catch (Exception ex) {
-
             if (!context.hasBeenClosedByKeepAlive()) {
                 ex.printStackTrace();
-                DiscordBot.log("**" + context.getId() + "**: (File Method) Error occurred in file transfer: " + ex.getMessage());
+                DiscordBot.get().log("**" + context.getId() + "**: (File Method) Error occurred in file transfer: " + ex.getMessage());
             }
         }
         if (file != null) {
-
             if (file.length() != size) {
-
                 try {
-                    DiscordBot.log("**" + context.getId() + "**: (File Method) Deleting file " + fileName + " because the size did not match. (" + size + ": " + file.length() + ")");
-                    Files.delete(Paths.get(fileName));
+                    DiscordBot.get().log("**" + context.getId() + "**: (File Method) Deleting file " + fileName + " because the size did not match. (" + size + ": " + file.length() + ")");
+                    Files.deleteIfExists(Paths.get("tmp/" + fileName));
 
                 } catch (Exception ex) {
                     ex.printStackTrace();
-                    DiscordBot.log("**" + context.getId() + "**: (File Method) Error occurred when deleting file " + fileName + ": " + ex.getMessage());
+                    DiscordBot.get().log("**" + context.getId() + "**: (File Method) Error occurred when deleting file " + fileName + ": " + ex.getMessage());
                 }
             }
+            else DiscordBot.get().log("**" + context.getId() + "**: (File Method) Successfully transfered file " + fileName + " with " + totalBytes + " total bytes");
         }
-        DiscordBot.log("**" + context.getId() + "**: (File Method) Successfully transfered file " + fileName + " with " + totalBytes + " total bytes");
 
         return file;
     }

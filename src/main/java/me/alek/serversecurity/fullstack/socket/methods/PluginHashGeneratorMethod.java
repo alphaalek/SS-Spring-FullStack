@@ -2,42 +2,61 @@ package me.alek.serversecurity.fullstack.socket.methods;
 
 import me.alek.serversecurity.fullstack.bot.DiscordBot;
 import me.alek.serversecurity.fullstack.restapi.service.HashService;
-import me.alek.serversecurity.fullstack.socket.ISocketTransferMethod;
 import me.alek.serversecurity.fullstack.socket.IStereotypedBeanSocketTransferMethod;
 import me.alek.serversecurity.fullstack.socket.IWaitableSocketTransferMethod;
 import me.alek.serversecurity.fullstack.socket.SocketPipelineContext;
-import me.alek.serversecurity.malware.scanning.VulnerabilityScanner;
+import me.alek.serversecurity.malware.model.result.CheckResult;
+import me.alek.serversecurity.malware.scanning.MalwareScanner;
 import org.apache.tomcat.util.codec.binary.Base64;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
-import java.util.Map;
-import java.util.Optional;
+import java.security.NoSuchAlgorithmException;
+import java.util.List;
+import java.util.stream.Collectors;
 
-public class PluginHashGeneratorMethod implements ISocketTransferMethod<Boolean>, IStereotypedBeanSocketTransferMethod {
+public class PluginHashGeneratorMethod implements IWaitableSocketTransferMethod<Boolean>, IStereotypedBeanSocketTransferMethod {
 
     private final HashService hashService;
 
     public PluginHashGeneratorMethod(HashService hashService) { this.hashService = hashService; }
 
-    private boolean hasFileMalware(File file) {
-        VulnerabilityScanner scanner = new VulnerabilityScanner(file);
-
+    private boolean hasFileMalware(MalwareScanner scanner) {
         scanner.startScan();
-        scanner.await();
 
-        return scanner.hasMalware();
+        return scanner.hasMalware() || scanner.getResultData().stream()
+                .flatMap(resultData -> resultData.getResults().stream())
+                .anyMatch(result -> result.getDetection().equals("Cracked"));
     }
 
-    private boolean hasAlreadyhash(String name, String version, String hash) {
-        Optional<Map<String, String>> mapOptional = hashService.getHashesOfPlugin(name, version);
+    private List<String> getResults(MalwareScanner scanner) {
+        return scanner.getResultData().get(0).getResults().stream().map(CheckResult::getDetection).collect(Collectors.toList());
+    }
 
-        return mapOptional.map(stringStringMap -> stringStringMap.containsKey(hash)).orElse(false);
+    private String getHash(File file) throws NoSuchAlgorithmException, IOException {
+        MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
+
+        byte[] fileData = Files.readAllBytes(Path.of(file.getPath()));
+        byte[] hash = messageDigest.digest(fileData);
+
+        return Base64.encodeBase64String(hash);
+    }
+
+    private boolean deleteFile(int id, File file) {
+        try {
+            Files.deleteIfExists(Paths.get(file.getPath()));
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            DiscordBot.get().log("**" + id + "**: (Hash Method) Error occurred when deleting file " + file.getName() + ".");
+        }
+        return false;
     }
 
     @Override
@@ -46,46 +65,48 @@ public class PluginHashGeneratorMethod implements ISocketTransferMethod<Boolean>
         String version = context.getStorage().poll(String.class);
 
         File file = context.getStorage().poll(File.class);
-        if (hasFileMalware(file)) {
-            DiscordBot.log("**" + context.getId() + "**: (Hash Method) File has malware, no hash of this file will be stored.");
-            return false;
-        }
-        context.sendKeepAlive();
+        MalwareScanner scanner = new MalwareScanner(file, true);
 
         if (file == null || !file.exists()) {
-            DiscordBot.log("**" + context.getId() + "**: (Hash Method) Unknown error occurred when generating plugin hash.");
-            return false;
+            DiscordBot.get().log("**" + context.getId() + "**: (Hash Method) Unknown error occurred when generating plugin hash.");
+
+            return deleteFile(context.getId(), file);
         }
         if (name == null || version == null) {
-            DiscordBot.log("**" + context.getId() + "**: (Hash Method) Client failed to send valid details about the plugin signature.");
-            return false;
+            DiscordBot.get().log("**" + context.getId() + "**: (Hash Method) Client failed to send valid details about the plugin signature.");
+
+            return deleteFile(context.getId(), file);
         }
         try {
-            MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
+            String checksum = getHash(file);
 
-            byte[] fileData = Files.readAllBytes(Path.of(file.getPath()));
-            byte[] hash = messageDigest.digest(fileData);
+            if (hasFileMalware(scanner)) {
+                DiscordBot.get().log("**" + context.getId() + "**: (Hash Method) File has malware or is cracked, no hash of this file will be stored.");
 
-            String checksum = Base64.encodeBase64String(hash);
-
-            if (hasAlreadyhash(name, version, checksum)) {
-                DiscordBot.log("**" + context.getId() + "**: (Hash Method) Hash is already stored for plugin " + name + " " + version + " (" + checksum + ")");
-
-                Files.delete(Paths.get(file.getPath()));
-                return false;
+                hashService.saveJarWindowOfPlugin(file.getName(), getResults(scanner), name, version, checksum, true);
+                return true;
             }
+            if (hashService.hasRegisteredHash(name, version, checksum)) {
+                DiscordBot.get().log("**" + context.getId() + "**: (Hash Method) Hash is already stored for plugin " + name + " " + version + " (" + checksum + ")");
 
-            DiscordBot.log("**" + context.getId() + "**: (Hash Method) Saving hash of plugin " + name + " " + version + " (" + checksum + ")");
+                return deleteFile(context.getId(), file);
+            }
+            if (hashService.isHashBlacklisted(name, version, checksum)) {
+                DiscordBot.get().log("**" + context.getId() + "**: (Hash Method) Hash is blacklisted for plugin " + name + " " + version + " (" + checksum + ")");
 
-            hashService.saveHashOfPlugin(file.getName(), name, version, checksum);
+                return deleteFile(context.getId(), file);
+            }
+            DiscordBot.get().log("**" + context.getId() + "**: (Hash Method) Saving hash of plugin " + name + " " + version + " (" + checksum + ")");
 
+            hashService.saveJarWindowOfPlugin(file.getName(), getResults(scanner), name, version, checksum, false);
             return true;
          } catch (Exception ex) {
 
             if (context.hasBeenClosedByKeepAlive()) return true;
 
             ex.printStackTrace();
-            DiscordBot.log("**" + context.getId() + "**: (Hash Method) Error occurred when generating plugin hash: " + ex.getMessage());
+            DiscordBot.get().log("**" + context.getId() + "**: (Hash Method) Error occurred when generating plugin hash: " + ex.getMessage());
+
             return false;
         }
     }
