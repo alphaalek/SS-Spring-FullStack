@@ -2,7 +2,7 @@ package me.alek.serversecurity.fullstack.socket;
 
 import me.alek.serversecurity.fullstack.bot.DiscordBot;
 import me.alek.serversecurity.fullstack.socket.tasks.SocketHandlerTask;
-import me.alek.serversecurity.fullstack.restapi.service.HashService;
+import me.alek.serversecurity.fullstack.restapi.service.PluginService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 
@@ -20,10 +20,10 @@ public class SocketController {
     private ServerSocket socket;
     private static CountDownLatch initializingWaitingLatch = null;
 
-    private final HashService hashService;
+    private final PluginService hashService;
 
     @Autowired
-    public SocketController(HashService hashService) {
+    public SocketController(PluginService hashService) {
         this.hashService = hashService;
 
         setup();

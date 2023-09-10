@@ -1,7 +1,7 @@
 package me.alek.serversecurity.fullstack.socket.methods;
 
 import me.alek.serversecurity.fullstack.bot.DiscordBot;
-import me.alek.serversecurity.fullstack.restapi.service.HashService;
+import me.alek.serversecurity.fullstack.restapi.service.PluginService;
 import me.alek.serversecurity.fullstack.socket.IStereotypedBeanSocketTransferMethod;
 import me.alek.serversecurity.fullstack.socket.IWaitableSocketTransferMethod;
 import me.alek.serversecurity.fullstack.socket.SocketPipelineContext;
@@ -23,20 +23,20 @@ import java.util.stream.Collectors;
 
 public class PluginHashGeneratorMethod implements IWaitableSocketTransferMethod<Boolean>, IStereotypedBeanSocketTransferMethod {
 
-    private final HashService hashService;
+    private final PluginService hashService;
 
-    public PluginHashGeneratorMethod(HashService hashService) { this.hashService = hashService; }
+    public PluginHashGeneratorMethod(PluginService hashService) { this.hashService = hashService; }
 
     private boolean hasFileMalware(MalwareScanner scanner) {
         scanner.startScan();
 
-        return scanner.hasMalware() || scanner.getResultData().stream()
+        return scanner.hasMalware() || scanner.getFlatResultData().stream()
                 .flatMap(resultData -> resultData.getResults().stream())
                 .anyMatch(result -> result.getDetection().equals("Cracked"));
     }
 
     private List<String> getResults(MalwareScanner scanner) {
-        return scanner.getResultData().get(0).getResults().stream().map(CheckResult::getDetection).collect(Collectors.toList());
+        return scanner.getFlatResultData().get(0).getResults().stream().map(CheckResult::getDetection).collect(Collectors.toList());
     }
 
     private String getHash(File file) throws NoSuchAlgorithmException, IOException {

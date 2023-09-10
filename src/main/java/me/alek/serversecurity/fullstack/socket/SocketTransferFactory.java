@@ -4,7 +4,7 @@ import me.alek.serversecurity.fullstack.socket.methods.CloseContextMethod;
 import me.alek.serversecurity.fullstack.socket.methods.PluginHashGeneratorMethod;
 import me.alek.serversecurity.fullstack.socket.methods.SocketFileTransferMethod;
 import me.alek.serversecurity.fullstack.socket.methods.SocketMessageTransferMethod;
-import me.alek.serversecurity.fullstack.restapi.service.HashService;
+import me.alek.serversecurity.fullstack.restapi.service.PluginService;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
@@ -41,10 +41,10 @@ public enum SocketTransferFactory {
         return clazz;
     }
 
-    public ISocketTransferMethod<?> createMethod(HashService hashService) throws InstantiationException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
+    public ISocketTransferMethod<?> createMethod(PluginService hashService) throws InstantiationException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
 
         if (IStereotypedBeanSocketTransferMethod.class.isAssignableFrom(clazz)) {
-            return clazz.getDeclaredConstructor(HashService.class).newInstance(hashService);
+            return clazz.getDeclaredConstructor(PluginService.class).newInstance(hashService);
         }
 
         return clazz.getDeclaredConstructor().newInstance();

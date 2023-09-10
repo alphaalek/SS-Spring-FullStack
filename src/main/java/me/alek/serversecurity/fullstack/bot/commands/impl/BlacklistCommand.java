@@ -1,7 +1,7 @@
 package me.alek.serversecurity.fullstack.bot.commands.impl;
 
 import me.alek.serversecurity.fullstack.bot.commands.DiscordCommandImpl;
-import me.alek.serversecurity.fullstack.restapi.service.HashService;
+import me.alek.serversecurity.fullstack.restapi.service.PluginService;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -13,9 +13,9 @@ import java.util.List;
 
 public class BlacklistCommand implements DiscordCommandImpl {
 
-    private final HashService hashService;
+    private final PluginService hashService;
 
-    public BlacklistCommand(HashService hashService) {
+    public BlacklistCommand(PluginService hashService) {
         this.hashService = hashService;
     }
 

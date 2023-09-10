@@ -5,7 +5,7 @@ import me.alek.serversecurity.fullstack.restapi.model.PluginDBEntry;
 
 import java.util.List;
 
-public interface HashService {
+public interface PluginService {
 
     List<String> getBlacklistedHashesOfPlugin(String plugin, String version);
 

@@ -3,7 +3,7 @@ package me.alek.serversecurity.fullstack.restapi.controller;
 import me.alek.serversecurity.fullstack.bot.DiscordBot;
 import me.alek.serversecurity.fullstack.bot.LoggingMethod;
 import me.alek.serversecurity.fullstack.restapi.model.PluginDBEntry;
-import me.alek.serversecurity.fullstack.restapi.service.HashService;
+import me.alek.serversecurity.fullstack.restapi.service.PluginService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,10 +16,10 @@ import java.util.List;
 @RequestMapping("/plugin")
 public class HashController {
 
-    private final HashService hashService;
+    private final PluginService hashService;
 
     @Autowired
-    public HashController(HashService hashService) { this.hashService = hashService; }
+    public HashController(PluginService hashService) { this.hashService = hashService; }
 
     @GetMapping
     public PluginDBEntry getPlugin(@RequestParam(value = "name") String name, @RequestParam(value = "version") String version) {

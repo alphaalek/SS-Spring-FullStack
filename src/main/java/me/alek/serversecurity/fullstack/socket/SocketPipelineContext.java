@@ -2,7 +2,7 @@ package me.alek.serversecurity.fullstack.socket;
 
 import me.alek.serversecurity.fullstack.socket.tasks.SocketHandlerTask;
 import me.alek.serversecurity.fullstack.bot.DiscordBot;
-import me.alek.serversecurity.fullstack.restapi.service.HashService;
+import me.alek.serversecurity.fullstack.restapi.service.PluginService;
 
 import java.io.InputStream;
 import java.net.ServerSocket;
@@ -38,7 +38,7 @@ public class SocketPipelineContext {
 
     private final int id;
     private final ServerSocket serverSocket;
-    private final HashService hashService;
+    private final PluginService hashService;
 
     private final LinkedBlockingQueue<Socket> clientSockets = new LinkedBlockingQueue<>();
     private final ExecutorService singleExecutorService = Executors.newSingleThreadExecutor();
@@ -53,7 +53,7 @@ public class SocketPipelineContext {
     private final AtomicBoolean hasSentConnected = new AtomicBoolean();
     private final AtomicBoolean shouldGarbageCollect = new AtomicBoolean();
 
-    public SocketPipelineContext(int id, ServerSocket serverSocket, HashService hashService) {
+    public SocketPipelineContext(int id, ServerSocket serverSocket, PluginService hashService) {
         this.id = id;
         this.serverSocket = serverSocket;
         this.hashService = hashService;

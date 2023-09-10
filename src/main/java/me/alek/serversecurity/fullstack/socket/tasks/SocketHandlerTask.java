@@ -1,7 +1,7 @@
 package me.alek.serversecurity.fullstack.socket.tasks;
 
 import me.alek.serversecurity.fullstack.bot.DiscordBot;
-import me.alek.serversecurity.fullstack.restapi.service.HashService;
+import me.alek.serversecurity.fullstack.restapi.service.PluginService;
 import me.alek.serversecurity.fullstack.socket.SocketPipelineContext;
 
 import java.io.DataInputStream;
@@ -17,10 +17,10 @@ public class SocketHandlerTask implements Runnable {
 
     private final Socket clientSocket;
     private final ServerSocket serverSocket;
-    private final HashService hashService;
+    private final PluginService hashService;
     private SocketPipelineContext context;
 
-    public SocketHandlerTask(ServerSocket serverSocket, Socket clientSocket, HashService hashService) {
+    public SocketHandlerTask(ServerSocket serverSocket, Socket clientSocket, PluginService hashService) {
         this.serverSocket = serverSocket;
         this.clientSocket = clientSocket;
         this.hashService = hashService;

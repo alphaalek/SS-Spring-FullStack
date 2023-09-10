@@ -14,12 +14,12 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-public class DefaultHashServiceImpl implements HashService {
+public class DefaultPluginServiceImpl implements PluginService {
 
     private final HashRepository hashRepository;
 
     @Autowired
-    public DefaultHashServiceImpl(HashRepository hashRepository) { this.hashRepository = hashRepository; }
+    public DefaultPluginServiceImpl(HashRepository hashRepository) { this.hashRepository = hashRepository; }
 
     public List<JarWindow> getJarWindowsOfPlugin(String plugin, String version) {
         return getLiteralPlugin(plugin, version).getJarWindows();
@@ -100,7 +100,7 @@ public class DefaultHashServiceImpl implements HashService {
     }
 
     public PluginDBEntry getLiteralPlugin(String plugin, String version) {
-        PluginSignature signature = new PluginSignature(plugin, version);
+        PluginSignature signature = new PluginSignature(plugin.toLowerCase(), version.toLowerCase());
         Optional<PluginDBEntry> optionalEntry = hashRepository.findBySignature(signature);
 
         return optionalEntry.orElseGet(() -> new PluginDBEntry(signature));

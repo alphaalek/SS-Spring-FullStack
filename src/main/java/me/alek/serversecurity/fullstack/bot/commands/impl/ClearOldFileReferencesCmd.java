@@ -3,7 +3,7 @@ package me.alek.serversecurity.fullstack.bot.commands.impl;
 import me.alek.serversecurity.fullstack.bot.commands.DiscordCommandImpl;
 import me.alek.serversecurity.fullstack.restapi.model.JarWindow;
 import me.alek.serversecurity.fullstack.restapi.model.PluginDBEntry;
-import me.alek.serversecurity.fullstack.restapi.service.HashService;
+import me.alek.serversecurity.fullstack.restapi.service.PluginService;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -19,9 +19,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ClearOldFileReferencesCmd implements DiscordCommandImpl {
 
     private final AtomicBoolean running = new AtomicBoolean();
-    private final HashService hashService;
+    private final PluginService hashService;
 
-    public ClearOldFileReferencesCmd(HashService hashService) { this.hashService = hashService; }
+    public ClearOldFileReferencesCmd(PluginService hashService) { this.hashService = hashService; }
 
     @Override
     public synchronized void perform(SlashCommandInteractionEvent event, Guild guild, Member member, User user) {

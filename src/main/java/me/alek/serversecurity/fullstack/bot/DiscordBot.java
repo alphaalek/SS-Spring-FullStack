@@ -1,7 +1,7 @@
 package me.alek.serversecurity.fullstack.bot;
 
 import me.alek.serversecurity.fullstack.bot.commands.CommandManager;
-import me.alek.serversecurity.fullstack.restapi.service.HashService;
+import me.alek.serversecurity.fullstack.restapi.service.PluginService;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
@@ -31,10 +31,10 @@ public class DiscordBot {
     private JDA jda;
     private CountDownLatch initializingWaitingLatch = null;
     private final Semaphore loggingSemaphore = new Semaphore(1);
-    private final HashService hashService;
+    private final PluginService hashService;
 
     @Autowired
-    public DiscordBot(HashService hashService) {
+    public DiscordBot(PluginService hashService) {
         INSTANCE = this;
         this.hashService = hashService;
 
